@@ -11,6 +11,8 @@ from models import *
 from utils import *
 import torch.distributed as dist
 
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 cudnn.benchmark = True
 parser = argparse.ArgumentParser(description='official Implementation of TransMVSNet')
 parser.add_argument('--mode', default='train', help='train or test', choices=['train', 'test', 'profile'])
@@ -26,7 +28,7 @@ parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lrepochs', type=str, default="10,12,14:2", help='epoch ids to downscale lr and the downscale rate')
 parser.add_argument('--wd', type=float, default=0.0001, help='weight decay')
 parser.add_argument('--nviews', type=int, default=5, help='total number of views')
-parser.add_argument('--batch_size', type=int, default=4, help='train batch size')
+parser.add_argument('--batch_size', type=int, default=1, help='train batch size')
 parser.add_argument('--numdepth', type=int, default=192, help='the number of depth values')
 parser.add_argument('--interval_scale', type=float, default=1.06, help='the number of depth values')
 parser.add_argument('--loadckpt', default=None, help='load a specific checkpoint')
