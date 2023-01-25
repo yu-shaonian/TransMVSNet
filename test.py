@@ -34,7 +34,7 @@ parser.add_argument('--ndepths', type=str, default="48,32,8", help='ndepths')
 parser.add_argument('--depth_inter_r', type=str, default="4,2,1", help='depth_intervals_ratio')
 parser.add_argument('--cr_base_chs', type=str, default="8,8,8", help='cost regularization base channels')
 parser.add_argument('--grad_method', type=str, default="detach", choices=["detach", "undetach"], help='grad method')
-parser.add_argument('--interval_scale', type=float, required=True, help='the depth interval scale')
+parser.add_argument('--interval_scale', type=float, default=1.06,help='the depth interval scale')
 parser.add_argument('--num_view', type=int, default=5, help='num of view')
 parser.add_argument('--max_h', type=int, default=864, help='testing max h')
 parser.add_argument('--max_w', type=int, default=1152, help='testing max w')
@@ -159,6 +159,8 @@ def save_scene_depth(testlist):
         for batch_idx, sample in enumerate(TestImgLoader):
             sample_cuda = tocuda(sample)
             start_time = time.time()
+            import ipdb
+            ipdb.set_trace()
             outputs = model(sample_cuda["imgs"], sample_cuda["proj_matrices"], sample_cuda["depth_values"])
             end_time = time.time()
             outputs = tensor2numpy(outputs)
@@ -433,12 +435,12 @@ if __name__ == '__main__':
     save_depth(testlist)
 
     # step2. filter saved depth maps with photometric confidence maps and geometric constraints
-    if args.filter_method == "normal":
-        pcd_filter(testlist, args.num_worker)
-    elif args.filter_method == "gipuma":
-        gipuma_filter(testlist, args.outdir, args.prob_threshold, args.disp_threshold, args.num_consistent,
-                      args.fusibile_exe_path)
-    elif args.filter_method == "dynamic":
-        pass
-    else:
-        raise NotImplementedError
+    # if args.filter_method == "normal":
+    #     pcd_filter(testlist, args.num_worker)
+    # elif args.filter_method == "gipuma":
+    #     gipuma_filter(testlist, args.outdir, args.prob_threshold, args.disp_threshold, args.num_consistent,
+    #                   args.fusibile_exe_path)
+    # elif args.filter_method == "dynamic":
+    #     pass
+    # else:
+    #     raise NotImplementedError

@@ -67,7 +67,12 @@ class DepthNet(nn.Module):
             ref_proj_new = ref_proj[:, 0].clone() # [B, 4, 4]
             ref_proj_new[:, :3, :4] = torch.matmul(ref_proj[:, 1, :3, :3], ref_proj[:, 0, :3, :4])
             warped_volume = homo_warping(src_fea, src_proj_new, ref_proj_new, depth_values)
+
             similarity = (warped_volume * ref_feature.unsqueeze(2)).mean(1, keepdim=True)
+            # print('---------------------------------------------')
+            # print("测试当中--------------------------")
+            # print(similarity.shape)
+            # exit(0)
 
             if view_weights == None:
                 view_weight = self.pixel_wise_net(similarity) # [B, 1, H, W]
@@ -218,6 +223,7 @@ class TransMVSNet(nn.Module):
 
             outputs["stage{}".format(stage_idx + 1)] = outputs_stage
             outputs.update(outputs_stage)
+        
 
         if self.refine:
             refined_depth = self.refine_network(torch.cat((imgs[:, 0], depth), 1))

@@ -9,8 +9,6 @@ tensorboard==2.6.0
 tensorboard-data-server==0.6.1
 tensorboard-plugin-wit==1.8.0
 tensorboardX==2.4
-torch==1.9.1
-torchvision==0.10.1
 tornado==6.1
 tqdm==4.62.3
 trimesh==3.9.41
