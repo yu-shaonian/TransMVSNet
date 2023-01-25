@@ -159,8 +159,7 @@ def save_scene_depth(testlist):
         for batch_idx, sample in enumerate(TestImgLoader):
             sample_cuda = tocuda(sample)
             start_time = time.time()
-            import ipdb
-            ipdb.set_trace()
+
             outputs = model(sample_cuda["imgs"], sample_cuda["proj_matrices"], sample_cuda["depth_values"])
             end_time = time.time()
             outputs = tensor2numpy(outputs)
