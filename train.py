@@ -387,6 +387,14 @@ if __name__ == '__main__':
     train_dataset = MVSDataset(args.trainpath, args.trainlist, "train", args.nviews, args.numdepth, args.interval_scale)
     test_dataset = MVSDataset(args.testpath, args.testlist, "test", args.nviews, args.numdepth, args.interval_scale)
 
+
+    # print("test")
+    # import ipdb
+    # ipdb.set_trace()
+
+
+
+
     if is_distributed:
         train_sampler = torch.utils.data.DistributedSampler(train_dataset, num_replicas=dist.get_world_size(), rank=dist.get_rank())
         test_sampler = torch.utils.data.DistributedSampler(test_dataset, num_replicas=dist.get_world_size(), rank=dist.get_rank())

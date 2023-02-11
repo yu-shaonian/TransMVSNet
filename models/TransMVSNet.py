@@ -62,8 +62,8 @@ class DepthNet(nn.Module):
         pixel_wise_weight_sum = 1e-5
 
         for i, (src_fea, src_proj) in enumerate(zip(src_features, src_projs)): # src_fea: [B, C, H, W]
-            src_proj_new = src_proj[:, 0].clone() # [B, 4, 4]
-            src_proj_new[:, :3, :4] = torch.matmul(src_proj[:, 1, :3, :3], src_proj[:, 0, :3, :4])
+            src_proj_new = src_proj[:, 0].clone() # [B, 4, 4]外参
+            src_proj_new[:, :3, :4] = torch.matmul(src_proj[:, 1, :3, :3], src_proj[:, 0, :3, :4])  #内参乘以外参
             ref_proj_new = ref_proj[:, 0].clone() # [B, 4, 4]
             ref_proj_new[:, :3, :4] = torch.matmul(ref_proj[:, 1, :3, :3], ref_proj[:, 0, :3, :4])
             warped_volume = homo_warping(src_fea, src_proj_new, ref_proj_new, depth_values)

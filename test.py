@@ -16,6 +16,8 @@ from gipuma import gipuma_filter
 from multiprocessing import Pool
 from functools import partial
 
+import os
+# os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 cudnn.benchmark = True
 
 parser = argparse.ArgumentParser(description='Predict depth, filter, and fuse')
@@ -24,10 +26,10 @@ parser.add_argument('--dataset', default='general_eval', help='select dataset')
 parser.add_argument('--testpath', default='/data-1/leiguojun/data/dtu', help='testing data dir for some scenes')
 parser.add_argument('--testpath_single_scene', help='testing data path for single scene')
 parser.add_argument('--testlist', default='lists/dtu/test.txt', help='testing scene list')
-parser.add_argument('--batch_size', type=int, default=1, help='testing batch size')
+parser.add_argument('--batch_size', type=int, default=10, help='testing batch size')
 parser.add_argument('--numdepth', type=int, default=192, help='the number of depth values')
 parser.add_argument('--loadckpt', default='/home/leiguojun/logs/mvsformer/trans/model_000015.ckpt', help='load a specific checkpoint')
-parser.add_argument('--outdir', default='/home/leiguojun/mvs_output/mvs_trans_2', help='output dir')
+parser.add_argument('--outdir', default='/home/leiguojun/mvs_output/trans_official_lr', help='output dir')
 parser.add_argument('--display', action='store_true', help='display depth images and masks')
 parser.add_argument('--share_cr', action='store_true', help='whether share the cost volume regularization')
 parser.add_argument('--ndepths', type=str, default="48,32,8", help='ndepths')
@@ -36,8 +38,8 @@ parser.add_argument('--cr_base_chs', type=str, default="8,8,8", help='cost regul
 parser.add_argument('--grad_method', type=str, default="detach", choices=["detach", "undetach"], help='grad method')
 parser.add_argument('--interval_scale', type=float, default=1.06,help='the depth interval scale')
 parser.add_argument('--num_view', type=int, default=5, help='num of view')
-parser.add_argument('--max_h', type=int, default=864, help='testing max h')
-parser.add_argument('--max_w', type=int, default=1152, help='testing max w')
+parser.add_argument('--max_h', type=int, default=512, help='testing max h')
+parser.add_argument('--max_w', type=int, default=640, help='testing max w')
 parser.add_argument('--fix_res', action='store_true', help='scene all using same res')
 parser.add_argument('--num_worker', type=int, default=4, help='depth_filer worker')
 parser.add_argument('--save_freq', type=int, default=20, help='save freq of local pcd')
@@ -127,10 +129,43 @@ def write_cam(file, cam):
 
     f.close()
 
+
+
 def save_depth(testlist):
 
     for scene in testlist:
         save_scene_depth([scene])
+
+
+def get_point_cloud_from_z(Y, camera_matrix, scale=1):
+    """Projects the depth image Y into a 3D point cloud.
+    Inputs:
+        Y is ...xHxW
+        camera_matrix
+    Outputs:
+        X is positive going right
+        Y is positive into the image
+        Z is positive up in the image
+        XYZ is ...xHxWx3
+    """
+
+    x, z = np.meshgrid(np.arange(Y.shape[-1]),
+                       np.arange(Y.shape[-2] - 1, -1, -1))
+    for i in range(Y.ndim - 2):
+        x = np.expand_dims(x, axis=0)
+        z = np.expand_dims(z, axis=0)
+    X = (x[::scale, ::scale] - camera_matrix.xc) * Y[::scale, ::scale] / camera_matrix.f
+    Z = (z[::scale, ::scale] - camera_matrix.zc) * Y[::scale, ::scale] / camera_matrix.f
+    #
+
+    XYZ = np.concatenate((X[..., np.newaxis], Y[::scale, ::scale][..., np.newaxis]
+                          ,Z[..., np.newaxis]), axis=X.ndim)
+    return XYZ
+
+from argparse import Namespace
+camera_matrix = {'xc': 127.5, 'zc': 127.5, 'f': 128}
+camera_matrix = Namespace(**camera_matrix)
+
 
 # run CasMVS model to save depth maps and confidence maps
 def save_scene_depth(testlist):
@@ -162,6 +197,27 @@ def save_scene_depth(testlist):
 
             outputs = model(sample_cuda["imgs"], sample_cuda["proj_matrices"], sample_cuda["depth_values"])
             end_time = time.time()
+
+
+
+            # img_1 = sample["imgs"][0,0,:,:,:].permute(1,2,0).numpy()
+            # img_2 = tensor2numpy(outputs["depth"].squeeze(0))
+            # img_3 = tensor2numpy(outputs["depth"].permute(1,2,0))
+            # plt.imshow(img_1)  # 显示图片
+            # plt.axis('off')  # 不显示坐标轴
+            # plt.show()
+
+            # plt.imshow(img_3)  # 显示图片
+            # plt.axis('off')  # 不显示坐标轴
+            # plt.show()
+
+            # XYZ = get_point_cloud_from_z(img_2, camera_matrix, scale=1)
+            # ax = plt.figure(1).gca(projection='3d')
+            # ax.plot(np.ndarray.flatten(XYZ[::, ::, 0]), np.ndarray.flatten(XYZ[::, ::, 1]),
+            #         np.ndarray.flatten(XYZ[::, ::, 2]), 'b.', markersize=0.2)
+            # plt.title('point cloud')
+            # plt.show()
+
             outputs = tensor2numpy(outputs)
             del sample_cuda
             filenames = sample["filename"]
@@ -420,6 +476,14 @@ def pcd_filter(testlist, number_worker):
         p.close()
     p.join()
 
+def mrun_rst(eval_dir, plyPath):
+    print('Runing BaseEvalMain_func.m...')
+    os.chdir(eval_dir)
+    os.system('/usr/local/Matlab/R2020a/bin/matlab -nodesktop -nosplash -r "BaseEvalMain_func(\'{}\'); quit" '.format(plyPath))
+    print('Runing ComputeStat_func.m...')
+    os.system('/usr/local/Matlab/R2020a/bin/matlab -nodesktop -nosplash -r "ComputeStat_func(\'{}\'); quit" '.format(plyPath))
+    print('Check your results! ^-^')
+
 if __name__ == '__main__':
 
     if args.testlist != "all":
@@ -434,12 +498,17 @@ if __name__ == '__main__':
     save_depth(testlist)
 
     # step2. filter saved depth maps with photometric confidence maps and geometric constraints
-    # if args.filter_method == "normal":
-    #     pcd_filter(testlist, args.num_worker)
-    # elif args.filter_method == "gipuma":
-    #     gipuma_filter(testlist, args.outdir, args.prob_threshold, args.disp_threshold, args.num_consistent,
-    #                   args.fusibile_exe_path)
-    # elif args.filter_method == "dynamic":
-    #     pass
-    # else:
-    #     raise NotImplementedError
+    if args.filter_method == "normal":
+        pcd_filter(testlist, args.num_worker)
+    elif args.filter_method == "gipuma":
+        gipuma_filter(testlist, args.outdir, args.prob_threshold, args.disp_threshold, args.num_consistent,
+                      args.fusibile_exe_path)
+    elif args.filter_method == "dynamic":
+        pass
+    else:
+        raise NotImplementedError
+
+    mrun_rst(
+            eval_dir='/home/leiguojun/TransMVSNet/DTU-MATLAB/',
+            plyPath=args.outdir
+        )

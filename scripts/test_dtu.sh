@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 TESTPATH="/data-1/leiguojun/data/dtu" 						# path to dataset dtu_test
 TESTLIST="lists/dtu/test.txt"
-CKPT_FILE="checkpoints/model_000015.ckpt"			   # path to checkpoint file, you need to use the model_dtu.ckpt for testing
+CKPT_FILE="/home/leiguojun/logs/mvsformer/trans/model_000015.ckpt"			   # path to checkpoint file, you need to use the model_dtu.ckpt for testing
 FUSIBLE_PATH="" 								 	# path to fusible of gipuma
-OUTDIR="/home/leiguojun/mvs_output/mvs_trans" 						  # path to output
+OUTDIR="/home/leiguojun/mvs_output/mvs_trans_official" 						  # path to output
 if [ ! -d $OUTDIR ]; then
 	mkdir -p $OUTDIR
 fi
@@ -11,7 +11,7 @@ fi
 
 python test.py \
 --dataset=general_eval \
---batch_size=4 \
+--batch_size=16 \
 --testpath=$TESTPATH  \
 --testlist=$TESTLIST \
 --loadckpt=$CKPT_FILE \

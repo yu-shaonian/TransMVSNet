@@ -313,7 +313,7 @@ def homo_warping(src_fea, src_proj, ref_proj, depth_values):
         proj_y_normalized = proj_xy[:, 1, :, :] / ((height - 1) / 2) - 1
         proj_y_normalized[invalid] = -99.
         proj_xy = torch.stack((proj_x_normalized, proj_y_normalized), dim=3)  # [B, Ndepth, H*W, 2]
-        grid = proj_xy
+        grid = proj_xy   #这里映射完成之后得到的是坐标
 
     warped_src_fea = F.grid_sample(src_fea, grid.view(batch, num_depth * height, width, 2), mode='bilinear',
                                    padding_mode='zeros', align_corners=True)

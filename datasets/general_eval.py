@@ -90,12 +90,13 @@ class MVSDataset(Dataset):
         return np.array(read_pfm(filename)[0], dtype=np.float32)
 
     def scale_mvs_input(self, img, intrinsics, max_w, max_h, base=32):
+
         h, w = img.shape[:2]
         if h > max_h or w > max_w:
-            scale = 1.0 * max_h / h
-            if scale * w > max_w:
-                scale = 1.0 * max_w / w
-            new_w, new_h = scale * w // base * base, scale * h // base * base
+            scale_h = 1.0 * max_h / h
+            scale_w = 1.0 * max_w / w
+            # scale = 1.0 * max_h / h
+            new_w, new_h = scale_w * w // base * base, scale_h * h // base * base
         else:
             new_w, new_h = 1.0 * w // base * base, 1.0 * h // base * base
 
