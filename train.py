@@ -12,7 +12,7 @@ from utils import *
 import torch.distributed as dist
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 cudnn.benchmark = True
 parser = argparse.ArgumentParser(description='official Implementation of TransMVSNet')
 parser.add_argument('--mode', default='train', help='train or test', choices=['train', 'test', 'profile'])
@@ -28,11 +28,12 @@ parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lrepochs', type=str, default="10,12,14:2", help='epoch ids to downscale lr and the downscale rate')
 parser.add_argument('--wd', type=float, default=0.0001, help='weight decay')
 parser.add_argument('--nviews', type=int, default=5, help='total number of views')
-parser.add_argument('--batch_size', type=int, default=1, help='train batch size')
+parser.add_argument('--batch_size', type=int, default=4, help='train batch size')
 parser.add_argument('--numdepth', type=int, default=192, help='the number of depth values')
 parser.add_argument('--interval_scale', type=float, default=1.06, help='the number of depth values')
-parser.add_argument('--loadckpt', default=None, help='load a specific checkpoint')
-parser.add_argument('--logdir', default='/data-1/leiguojun/logs/mvsformer/trans', help='the directory to save checkpoints/logs')
+# parser.add_argument('--loadckpt', default=None, help='load a specific checkpoint')
+parser.add_argument('--loadckpt', default='/home/leiguojun/logs/mvsformer/trans/model_000015.ckpt', help='load a specific checkpoint')
+parser.add_argument('--logdir', default='/data-1/leiguojun/logs/mvsformer/trans_pretrain_former', help='the directory to save checkpoints/logs')
 parser.add_argument('--resume', action='store_true', help='continue to train the model')
 parser.add_argument('--summary_freq', type=int, default=10, help='print and summary frequency')
 parser.add_argument('--save_freq', type=int, default=1, help='save checkpoint frequency')
@@ -339,6 +340,12 @@ if __name__ == '__main__':
         print("using apex synced BN")
         model = apex.parallel.convert_syncbn_model(model)
 
+    # 只是训练transformer层数
+    for p in model.parameters():
+        p.requires_grad = False
+    for p in model.cost_regularization.parameters():
+        p.requires_grad = True
+
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.wd)
 
     # load parameters
@@ -357,7 +364,12 @@ if __name__ == '__main__':
         # load checkpoint file specified by args.loadckpt
         print("loading model {}".format(args.loadckpt))
         state_dict = torch.load(args.loadckpt, map_location=torch.device("cpu"))
-        model.load_state_dict(state_dict['model'])
+        net_dict = model.state_dict()
+        # 将pretrained_dict里不属于net_dict的键剔除掉
+        pretrained_dict = {k: v for k, v in state_dict['model'].items() if k in net_dict}
+        net_dict.update(pretrained_dict)  # 将与 pretrained_dict 中 layer_name 相同的参数更新为 pretrained_dict 的
+
+        model.load_state_dict(net_dict)
 
     if (not is_distributed) or (dist.get_rank() == 0):
         print("start at epoch {}".format(start_epoch))

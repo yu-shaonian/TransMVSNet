@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .module import *
 from .FMT import FMT_with_pathway
+from .mvsformer import Mvsformer
 
 Align_Corners_Range = False
 
@@ -93,8 +94,9 @@ class DepthNet(nn.Module):
         similarity = similarity_sum.div_(pixel_wise_weight_sum) # [B, 1, D, H, W]
 
         # step 3. cost volume regularization
-        cost_reg = cost_regularization(similarity)
-        prob_volume_pre = cost_reg.squeeze(1)
+        prob_volume_pre = cost_regularization(similarity.squeeze(1))
+        # prob_volume_pre = cost_reg.squeeze(1)
+        del similarity
 
         if prob_volume_init is not None:
             prob_volume_pre += prob_volume_init
@@ -147,8 +149,10 @@ class TransMVSNet(nn.Module):
         if self.share_cr:
             self.cost_regularization = CostRegNet(in_channels=1, base_channels=8)
         else:
-            self.cost_regularization = nn.ModuleList([CostRegNet(in_channels=1, base_channels=self.cr_base_chs[i])
-                for i in range(self.num_stage)])
+            # self.cost_regularization = nn.ModuleList([CostRegNet(in_channels=1, base_channels=self.cr_base_chs[i])
+            #     for i in range(self.num_stage)])
+            self.cost_regularization = nn.ModuleList([Mvsformer(channel=self.ndepths[i],dim=64*self.ndepths[i])
+                                                      for i in range(self.num_stage)])
         if self.refine:
             self.refine_network = RefineNet()
 
@@ -165,7 +169,7 @@ class TransMVSNet(nn.Module):
             img = imgs[:, nview_idx]
             features.append(self.feature(img))
 
-        features = self.FMT_with_pathway(features)
+        features = self.FMT_with_pathway(features) #这里无非就是提取特征以及进行一些平滑操作
 
         outputs = {}
         depth, cur_depth = None, None

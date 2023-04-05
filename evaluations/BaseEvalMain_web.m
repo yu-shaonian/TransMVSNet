@@ -4,15 +4,13 @@ format compact
 clc
 
 % script to calculate distances have been measured for all included scans (UsedSets)
-% DTU dataset pcd path
-dataPath='/0_workspace/MVS/DTU_MATLAB_eval';
-% my result path
-plyPath='/0_workspace/MVS/DTU_MATLAB_eval/test_train_syncbn_4src_1021';
-% eval result path
-resultsPath='/0_workspace/MVS/DTU_MATLAB_eval/test_train_syncbn_4src_1021_result';
+
+dataPath='/home/xyguo/dataset/dtu_mvs/SampleSet/MVS Data/';
+plyPath='/home/xyguo/code/mvsnet_pytorch/outputs/';
+resultsPath='/home/xyguo/code/mvsnet_pytorch/outputs/';
 
 method_string='mvsnet';
-light_string=''; % l3 is the setting with all lights on, l7 is randomly sampled between the 7 settings (index 0-6)
+light_string='l3'; % l3 is the setting with all lights on, l7 is randomly sampled between the 7 settings (index 0-6)
 representation_string='Points'; %mvs representation 'Points' or 'Surfaces'
 
 switch representation_string
@@ -30,8 +28,7 @@ for cIdx=1:length(UsedSets)
     %Data set number
     cSet = UsedSets(cIdx)
     %input data name
-    %DataInName=[plyPath sprintf('/%sscan%d%s%s.ply',lower(method_string),cSet,light_string,settings_string)]
-    DataInName=[plyPath sprintf('/mvsnet%03d_l3.ply',cSet)]
+    DataInName=[plyPath sprintf('/%s%03d_%s%s.ply',lower(method_string),cSet,light_string,settings_string)]
     
     %results name
     EvalName=[resultsPath method_string eval_string num2str(cSet) '.mat']

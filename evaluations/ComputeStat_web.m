@@ -7,13 +7,15 @@ clc
 % for all included scans (UsedSets)
 
 % modify the path to evaluate your models
-resultsPath='/0_workspace/MVS/DTU_MATLAB_eval/test_train_syncbn_4src_1021_result';
+dataPath='/home/xyguo/dataset/dtu_mvs/SampleSet/MVS Data/';
+resultsPath='/home/xyguo/code/mvsnet_pytorch/outputs/';
 
 MaxDist=20; %outlier thresshold of 20 mm
 
 time=clock;
 
 method_string='mvsnet';
+light_string='l3'; %'l7'; l3 is the setting with all lights on, l7 is randomly sampled between the 7 settings (index 0-6)
 representation_string='Points'; %mvs representation 'Points' or 'Surfaces'
 
 switch representation_string

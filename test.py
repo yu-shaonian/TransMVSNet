@@ -16,6 +16,8 @@ from gipuma import gipuma_filter
 from multiprocessing import Pool
 from functools import partial
 
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 cudnn.benchmark = True
 
 parser = argparse.ArgumentParser(description='Predict depth, filter, and fuse')
@@ -127,10 +129,43 @@ def write_cam(file, cam):
 
     f.close()
 
+
+
 def save_depth(testlist):
 
     for scene in testlist:
         save_scene_depth([scene])
+
+
+def get_point_cloud_from_z(Y, camera_matrix, scale=1):
+    """Projects the depth image Y into a 3D point cloud.
+    Inputs:
+        Y is ...xHxW
+        camera_matrix
+    Outputs:
+        X is positive going right
+        Y is positive into the image
+        Z is positive up in the image
+        XYZ is ...xHxWx3
+    """
+
+    x, z = np.meshgrid(np.arange(Y.shape[-1]),
+                       np.arange(Y.shape[-2] - 1, -1, -1))
+    for i in range(Y.ndim - 2):
+        x = np.expand_dims(x, axis=0)
+        z = np.expand_dims(z, axis=0)
+    X = (x[::scale, ::scale] - camera_matrix.xc) * Y[::scale, ::scale] / camera_matrix.f
+    Z = (z[::scale, ::scale] - camera_matrix.zc) * Y[::scale, ::scale] / camera_matrix.f
+    #
+
+    XYZ = np.concatenate((X[..., np.newaxis], Y[::scale, ::scale][..., np.newaxis]
+                          ,Z[..., np.newaxis]), axis=X.ndim)
+    return XYZ
+
+from argparse import Namespace
+camera_matrix = {'xc': 127.5, 'zc': 127.5, 'f': 128}
+camera_matrix = Namespace(**camera_matrix)
+
 
 # run CasMVS model to save depth maps and confidence maps
 def save_scene_depth(testlist):
@@ -162,6 +197,27 @@ def save_scene_depth(testlist):
 
             outputs = model(sample_cuda["imgs"], sample_cuda["proj_matrices"], sample_cuda["depth_values"])
             end_time = time.time()
+
+
+
+            img_1 = sample["imgs"][0,0,:,:,:].permute(1,2,0).numpy()
+            img_2 = tensor2numpy(outputs["depth"].squeeze(0))
+            img_3 = tensor2numpy(outputs["depth"].permute(1,2,0))
+            plt.imshow(img_1)  # 显示图片
+            plt.axis('off')  # 不显示坐标轴
+            plt.show()
+
+            plt.imshow(img_3)  # 显示图片
+            plt.axis('off')  # 不显示坐标轴
+            plt.show()
+
+            XYZ = get_point_cloud_from_z(img_2, camera_matrix, scale=1)
+            ax = plt.figure(1).gca(projection='3d')
+            ax.plot(np.ndarray.flatten(XYZ[::, ::, 0]), np.ndarray.flatten(XYZ[::, ::, 1]),
+                    np.ndarray.flatten(XYZ[::, ::, 2]), 'b.', markersize=0.2)
+            plt.title('point cloud')
+            plt.show()
+
             outputs = tensor2numpy(outputs)
             del sample_cuda
             filenames = sample["filename"]
@@ -434,12 +490,12 @@ if __name__ == '__main__':
     save_depth(testlist)
 
     # step2. filter saved depth maps with photometric confidence maps and geometric constraints
-    # if args.filter_method == "normal":
-    #     pcd_filter(testlist, args.num_worker)
-    # elif args.filter_method == "gipuma":
-    #     gipuma_filter(testlist, args.outdir, args.prob_threshold, args.disp_threshold, args.num_consistent,
-    #                   args.fusibile_exe_path)
-    # elif args.filter_method == "dynamic":
-    #     pass
-    # else:
-    #     raise NotImplementedError
+    if args.filter_method == "normal":
+        pcd_filter(testlist, args.num_worker)
+    elif args.filter_method == "gipuma":
+        gipuma_filter(testlist, args.outdir, args.prob_threshold, args.disp_threshold, args.num_consistent,
+                      args.fusibile_exe_path)
+    elif args.filter_method == "dynamic":
+        pass
+    else:
+        raise NotImplementedError
